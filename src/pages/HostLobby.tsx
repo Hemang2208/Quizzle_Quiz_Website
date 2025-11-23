@@ -5,6 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Users, Play } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import QRCode from 'react-qr-code';
+import { testSupabaseConnection } from '@/lib/supabaseTest';
 
 // --- Helper Functions ---
 
@@ -37,6 +38,17 @@ const HostLobby = () => {
 
   useEffect(() => {
     if (!quizId) return;
+
+    // Test Supabase connection first
+    testSupabaseConnection().then(result => {
+      if (!result.success) {
+        toast({ 
+          title: 'Connection Error', 
+          description: `Database connection failed: ${result.error}`,
+          variant: 'destructive' 
+        });
+      }
+    });
 
     const fetchQuiz = async () => {
       const { data, error } = await supabase
@@ -96,12 +108,57 @@ const HostLobby = () => {
       return;
     }
 
-    await supabase
-      .from('quizzes')
-      .update({ status: 'playing' })
-      .eq('id', quizId);
+    try {
+      // First, verify the quiz has questions
+      const { data: questions, error: questionsError } = await supabase
+        .from('questions')
+        .select('id')
+        .eq('quiz_id', quizId);
 
-    navigate(`/host/play/${quizId}`);
+      if (questionsError) {
+        console.error('Error checking questions:', questionsError);
+        toast({ 
+          title: 'Failed to start quiz', 
+          description: 'Could not verify quiz questions. Please try again.',
+          variant: 'destructive' 
+        });
+        return;
+      }
+
+      if (!questions || questions.length === 0) {
+        toast({ 
+          title: 'Cannot start quiz', 
+          description: 'This quiz has no questions. Please add questions before starting.',
+          variant: 'destructive' 
+        });
+        return;
+      }
+
+      // Now update the quiz status
+      const { error } = await supabase
+        .from('quizzes')
+        .update({ status: 'playing' })
+        .eq('id', quizId);
+
+      if (error) {
+        console.error('Error starting quiz:', error);
+        toast({ 
+          title: 'Failed to start quiz', 
+          description: error.message || 'Unable to start the quiz. Please try again.',
+          variant: 'destructive' 
+        });
+        return;
+      }
+
+      navigate(`/host/play/${quizId}`);
+    } catch (error) {
+      console.error('Unexpected error starting quiz:', error);
+      toast({ 
+        title: 'Failed to start quiz', 
+        description: 'An unexpected error occurred. Please try again.',
+        variant: 'destructive' 
+      });
+    }
   };
 
   if (loading) {

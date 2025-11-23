@@ -97,7 +97,7 @@ const HostResults = () => {
     let baseClasses = 'transition-all duration-1000 transform flex flex-col justify-center';
 
     if (index === 0) { // 1st Place
-      baseClasses += ' ease-[cubic-bezier(0.25,1.5,0.5,1)]'; // Bouncy
+      baseClasses += ' ease-&lsqb;cubic-bezier(0.25,1.5,0.5,1)&rsqb;'; // Bouncy
       return `${baseClasses} ${isVisible ? 'opacity-100 scale-100' : 'opacity-0 scale-50'}`;
     }
     
